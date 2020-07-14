@@ -1,7 +1,8 @@
 from typing import Optional
+import torch
 from torch import Tensor, nn
 
-from modules import ConvLayer, Route, YoloLayer
+from smol.modules import ConvLayer, Route, YoloLayer
 
 
 class YoloV4Tiny(nn.Module):
@@ -96,17 +97,3 @@ class YoloV4Tiny(nn.Module):
         yolo2 = self.yolo2(x36)
 
         return torch.cat([yolo1, yolo2], dim=1)
-
-
-if __name__ == "__main__":
-    from utils import load_darknet_weights
-
-    model = YoloV4Tiny().cuda()
-    success = load_darknet_weights(model, "../darknet/yolov4-tiny.weights")
-    assert success
-
-    import torch
-    x = torch.FloatTensor(1, 3, 416, 416).uniform_().cuda()
-    with torch.no_grad():
-        y = model(x)
-    print(y.shape)

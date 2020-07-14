@@ -4,7 +4,7 @@ import numpy as np
 import torch
 from torch import nn
 
-from modules import ConvLayer
+from smol.modules import ConvLayer
 
 
 def darknet_numel(model: nn.Module) -> int:
