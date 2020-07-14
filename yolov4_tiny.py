@@ -43,7 +43,7 @@ class YoloV4Tiny(nn.Module):
         self.conv27 = ConvLayer(512, 256, 1, 1, activ="leaky")
         self.conv28 = ConvLayer(256, 512, 3, 1, activ="leaky")
         self.conv29 = ConvLayer(512, self.out_channels, 1, 1, batch_norm=False)
-        # yolo30
+        self.yolo1 = YoloLayer(32, [(81, 82), (135, 169), (344, 319)], num_classes)
 
         self.route31 = Route()
         self.conv32 = ConvLayer(256, 128, 1, 1, activ="leaky")
@@ -51,7 +51,7 @@ class YoloV4Tiny(nn.Module):
         self.route34 = Route()
         self.conv35 = ConvLayer(384, 256, 3, 1, activ="leaky")
         self.conv36 = ConvLayer(256, self.out_channels, 1, 1, batch_norm=False)
-        # yolo37
+        self.yolo2 = YoloLayer(16, [(10, 14), (23, 27), (37, 58)], num_classes)
 
     def forward(self, x: Tensor) -> Tensor:
         x0 = self.conv0(x)
@@ -85,7 +85,7 @@ class YoloV4Tiny(nn.Module):
         x27 = self.conv27(x26)
         x28 = self.conv28(x27)
         x29 = self.conv29(x28)
-        # -> YOLO
+        yolo1 = self.yolo1(x29)
 
         x31 = self.route31(x27)
         x32 = self.conv32(x31)
@@ -93,9 +93,9 @@ class YoloV4Tiny(nn.Module):
         x34 = self.route34(x33, x23)
         x35 = self.conv35(x34)
         x36 = self.conv36(x35)
-        # -> YOLO
+        yolo2 = self.yolo2(x36)
 
-        return x29, x36
+        return torch.cat([yolo1, yolo2], dim=1)
 
 
 if __name__ == "__main__":
@@ -106,8 +106,7 @@ if __name__ == "__main__":
     assert success
 
     import torch
-    x = torch.FloatTensor(1, 3, 320, 320).uniform_().cuda()
+    x = torch.FloatTensor(1, 3, 416, 416).uniform_().cuda()
     with torch.no_grad():
-        y1, y2 = model(x)
-    print(y1.shape)
-    print(y2.shape)
+        y = model(x)
+    print(y.shape)
