@@ -85,14 +85,6 @@ class YoloLayer(nn.Module):
         device = pred.device
         B, C, H, W = pred.shape
 
-        pred = pred.view(B, -1, self.num_classes + 5, H, W)
-        pred = pred.permute(0, 1, 3, 4, 2).contiguous()
-
-        x = torch.sigmoid(pred[..., 0])
-        y = torch.sigmoid(pred[..., 1])
-        w = pred[..., 2]
-        h = pred[..., 3]
-
         grid_x = torch.arange(W).repeat(W, 1).view([1, 1, W, W]).to(torch.float32)
         grid_y = torch.arange(H).repeat(H, 1).view([1, 1, H, H]).to(torch.float32)
 
@@ -101,11 +93,13 @@ class YoloLayer(nn.Module):
         anchor_w = torch.FloatTensor(anchor_w).view(1, -1, 1, 1)
         anchor_h = torch.FloatTensor(anchor_h).view(1, -1, 1, 1)
 
-        x = x + grid_x.to(device)
-        y = y + grid_y.to(device)
-        w = torch.exp(w) * anchor_w.to(device)
-        h = torch.exp(h) * anchor_h.to(device)
+        pred = pred.view(B, -1, self.num_classes + 5, H, W)
+        pred = pred.permute(0, 1, 3, 4, 2).contiguous()
 
+        x = torch.sigmoid(pred[..., 0]) + grid_x.to(device)
+        y = torch.sigmoid(pred[..., 1]) + grid_y.to(device)
+        w = torch.exp(pred[..., 2]) * anchor_w.to(device)
+        h = torch.exp(pred[..., 3]) * anchor_h.to(device)
         pred_boxes = torch.cat([x, y, w, h], dim=-1)
         pred_boxes = self.stride * pred_boxes.view(B, -1, 4)
         box_conf = torch.sigmoid(pred[..., 4]).view(B, -1, 1)
