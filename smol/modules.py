@@ -62,6 +62,8 @@ class Route(nn.Module):
 
     def forward(self, *tensors: Tensor) -> Tensor:
         if self.groups is None and self.group_id is None:
+            if len(tensors) == 1:
+                return tensors[0]
             return torch.cat(tensors, dim=1)
         else:
             if len(tensors) > 1:
@@ -84,25 +86,25 @@ class YoloLayer(nn.Module):
     def forward(self, pred: Tensor) -> Tuple[Tensor, Tensor]:
         device = pred.device
         B, C, H, W = pred.shape
+        N = self.num_classes
 
-        grid_x = torch.arange(W).repeat(W, 1).view([1, 1, W, W]).to(torch.float32)
-        grid_y = torch.arange(H).repeat(H, 1).view([1, 1, H, H]).to(torch.float32)
+        grid_x = torch.arange(W).repeat(H, 1).to(torch.float)
+        grid_y = torch.arange(H).repeat(W, 1).t().to(torch.float)
+        grid = torch.stack([grid_x, grid_y], dim=2).to(device)
 
-        anchors = [(aw / self.stride, ah / self.stride) for aw, ah in self.anchors]
-        anchor_w, anchor_h = list(zip(*anchors))
-        anchor_w = torch.FloatTensor(anchor_w).view(1, -1, 1, 1)
-        anchor_h = torch.FloatTensor(anchor_h).view(1, -1, 1, 1)
+        anchors = torch.FloatTensor(self.anchors) / self.stride
+        anchors = anchors.view(B, -1, 1, 1, 2)
 
-        pred = pred.view(B, -1, self.num_classes + 5, H, W)
+        pred = pred.view(B, -1, N + 5, H, W)
         pred = pred.permute(0, 1, 3, 4, 2).contiguous()
+        xy, wh, box_conf, cls_conf = torch.split(pred, [2, 2, 1, N], dim=-1)
 
-        x = torch.sigmoid(pred[..., 0]) + grid_x.to(device)
-        y = torch.sigmoid(pred[..., 1]) + grid_y.to(device)
-        w = torch.exp(pred[..., 2]) * anchor_w.to(device)
-        h = torch.exp(pred[..., 3]) * anchor_h.to(device)
-        pred_boxes = torch.cat([x, y, w, h], dim=-1)
-        pred_boxes = self.stride * pred_boxes.view(B, -1, 4)
-        box_conf = torch.sigmoid(pred[..., 4]).view(B, -1, 1)
-        cls_conf = torch.sigmoid(pred[..., 5:]).view(B, -1, self.num_classes)
+        xy = torch.sigmoid(xy) + grid.clone().detach()
+        wh = torch.exp(wh) * anchors.clone().detach()
+        boxes = torch.cat([xy, wh], dim=-1)
+        boxes = self.stride * boxes.view(B, -1, 4)
 
-        return torch.cat([pred_boxes, box_conf, cls_conf], dim=-1)
+        box_conf = torch.sigmoid(box_conf).view(B, -1, 1)
+        cls_conf = torch.sigmoid(cls_conf).view(B, -1, N)
+
+        return torch.cat([boxes, box_conf, cls_conf], dim=-1)
