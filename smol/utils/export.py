@@ -3,7 +3,9 @@ from typing import Union, Sequence, Optional, Tuple
 import torch
 from torch import nn
 import onnx
-from onnxsim import simplify as onnx_simplify
+
+# from onnxsim import simplify as onnx_simplify
+from smol.utils.onnx_simplifier import simplify as onnx_simplify
 
 
 def export_state_dict(model: nn.Module, path: Union[str, Path]) -> Path:
@@ -17,9 +19,7 @@ def export_onnx(
     model: nn.Module,
     path: Union[str, Path],
     input_shape: Tuple[int, int, int, int],
-    input_names: Optional[Sequence[int]] = None,
-    output_names: Optional[Sequence[int]] = None,
-    opset_version: int = 10,
+    opset_version: int = 11,
     verbose: bool = False,
     simplify: bool = True,
 ) -> Path:
@@ -30,14 +30,14 @@ def export_onnx(
         model,
         dummy_input,
         path,
-        input_names=input_names,
-        output_names=output_names,
+        export_params=True,
         opset_version=opset_version,
         verbose=verbose,
+        do_constant_folding=True,
         keep_initializers_as_inputs=True,
     )
     if simplify:
-        simple_onnx, success = onnx_simplify(str(path), perform_optimization=True)
+        simple_onnx, success = onnx_simplify(str(path))
         assert success, "failed to simplify the exported ONNX file"
         onnx.save(simple_onnx, str(path))
     return path
