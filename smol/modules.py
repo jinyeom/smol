@@ -96,11 +96,11 @@ class YoloLayer(nn.Module):
         anchors = anchors.view(B, -1, 1, 1, 2)
 
         pred = pred.view(B, -1, N + 5, H, W)
-        pred = pred.permute(0, 1, 3, 4, 2).contiguous()
+        pred = pred.permute(0, 1, 3, 4, 2)
         xy, wh, box_conf, cls_conf = torch.split(pred, [2, 2, 1, N], dim=-1)
 
-        xy = torch.sigmoid(xy) + grid.clone().detach()
-        wh = torch.exp(wh) * anchors.clone().detach()
+        xy = torch.sigmoid(xy) + grid.data
+        wh = torch.exp(wh) * anchors.data
         boxes = torch.cat([xy, wh], dim=-1)
         boxes = self.stride * boxes.view(B, -1, 4)
 
