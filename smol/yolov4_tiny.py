@@ -13,6 +13,7 @@ class YoloV4Tiny(nn.Module):
 
         self.conv0 = ConvLayer(3, 32, 3, 2, activ="leaky")
         self.conv1 = ConvLayer(32, 64, 3, 2, activ="leaky")
+
         self.conv2 = ConvLayer(64, 64, 3, 1, activ="leaky")
         self.route3 = Route(groups=2, group_id=1)
         self.conv4 = ConvLayer(32, 32, 3, 1, activ="leaky")
@@ -21,6 +22,7 @@ class YoloV4Tiny(nn.Module):
         self.conv7 = ConvLayer(64, 64, 1, 1, activ="leaky")
         self.route8 = Route()
         self.pool9 = nn.MaxPool2d(2, 2)
+
         self.conv10 = ConvLayer(128, 128, 3, 1, activ="leaky")
         self.route11 = Route(groups=2, group_id=1)
         self.conv12 = ConvLayer(64, 64, 3, 1, activ="leaky")
@@ -29,6 +31,7 @@ class YoloV4Tiny(nn.Module):
         self.conv15 = ConvLayer(128, 128, 1, 1, activ="leaky")
         self.route16 = Route()
         self.pool17 = nn.MaxPool2d(2, 2)
+
         self.conv18 = ConvLayer(256, 256, 3, 1, activ="leaky")
         self.route19 = Route(groups=2, group_id=1)
         self.conv20 = ConvLayer(128, 128, 3, 1, activ="leaky")
@@ -37,6 +40,7 @@ class YoloV4Tiny(nn.Module):
         self.conv23 = ConvLayer(256, 256, 1, 1, activ="leaky")
         self.route24 = Route()
         self.pool25 = nn.MaxPool2d(2, 2)
+
         self.conv26 = ConvLayer(512, 512, 3, 1, activ="leaky")
 
         ##################################
@@ -57,6 +61,7 @@ class YoloV4Tiny(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         x0 = self.conv0(x)
         x1 = self.conv1(x0)
+
         x2 = self.conv2(x1)
         x3 = self.route3(x2)
         x4 = self.conv4(x3)
@@ -65,6 +70,7 @@ class YoloV4Tiny(nn.Module):
         x7 = self.conv7(x6)
         x8 = self.route8(x2, x7)
         x9 = self.pool9(x8)
+
         x10 = self.conv10(x9)
         x11 = self.route11(x10)
         x12 = self.conv12(x11)
@@ -73,6 +79,7 @@ class YoloV4Tiny(nn.Module):
         x15 = self.conv15(x14)
         x16 = self.route16(x10, x15)
         x17 = self.pool17(x16)
+
         x18 = self.conv18(x17)
         x19 = self.route19(x18)
         x20 = self.conv20(x19)
@@ -81,7 +88,10 @@ class YoloV4Tiny(nn.Module):
         x23 = self.conv23(x22)
         x24 = self.route24(x18, x23)
         x25 = self.pool25(x24)
+
         x26 = self.conv26(x25)
+
+        ##################################
 
         x27 = self.conv27(x26)
         x28 = self.conv28(x27)
