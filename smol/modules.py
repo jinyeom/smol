@@ -77,11 +77,18 @@ class Route(nn.Module):
 
 
 class YoloLayer(nn.Module):
-    def __init__(self, stride: int, anchors: List[Tuple[int, int]], num_classes: int):
+    def __init__(
+        self,
+        stride: int,
+        anchors: List[Tuple[int, int]],
+        num_classes: int,
+        scale_xy: float,
+    ):
         super().__init__()
         self.stride = stride
         self.anchors = anchors
         self.num_classes = num_classes
+        self.scale_xy = scale_xy
 
     def forward(self, pred: Tensor) -> Tuple[Tensor, Tensor]:
         device = pred.device
@@ -99,7 +106,7 @@ class YoloLayer(nn.Module):
         pred = pred.permute(0, 1, 3, 4, 2)
         xy, wh, box_conf, cls_conf = torch.split(pred, [2, 2, 1, N], dim=-1)
 
-        xy = torch.sigmoid(xy) + grid.data
+        xy = (torch.sigmoid(xy) - 0.5) * self.scale_xy + 0.5 + grid.data
         wh = torch.exp(wh) * anchors.data
         boxes = torch.cat([xy, wh], dim=-1)
         boxes = self.stride * boxes.view(B, -1, 4)

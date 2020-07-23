@@ -48,7 +48,9 @@ class YoloV4Tiny(nn.Module):
         self.conv27 = ConvLayer(512, 256, 1, 1, activ="leaky")
         self.conv28 = ConvLayer(256, 512, 3, 1, activ="leaky")
         self.conv29 = ConvLayer(512, self.out_channels, 1, 1, batch_norm=False)
-        self.yolo1 = YoloLayer(32, [(81, 82), (135, 169), (344, 319)], num_classes)
+        self.yolo1 = YoloLayer(
+            32, [(81, 82), (135, 169), (344, 319)], num_classes, 1.05
+        )
 
         self.route31 = Route()
         self.conv32 = ConvLayer(256, 128, 1, 1, activ="leaky")
@@ -56,7 +58,7 @@ class YoloV4Tiny(nn.Module):
         self.route34 = Route()
         self.conv35 = ConvLayer(384, 256, 3, 1, activ="leaky")
         self.conv36 = ConvLayer(256, self.out_channels, 1, 1, batch_norm=False)
-        self.yolo2 = YoloLayer(16, [(23, 27), (37, 58), (81, 82)], num_classes)
+        self.yolo2 = YoloLayer(16, [(23, 27), (37, 58), (81, 82)], num_classes, 1.05)
 
     def forward(self, x: Tensor) -> Tensor:
         x0 = self.conv0(x)
@@ -107,3 +109,11 @@ class YoloV4Tiny(nn.Module):
         yolo1 = self.yolo1(x29)
         yolo2 = self.yolo2(x36)
         return torch.cat([yolo1, yolo2], dim=1)
+
+
+def postprocess():
+    pass
+
+
+def train():
+    pass
