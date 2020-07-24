@@ -4,8 +4,7 @@ import torch
 from torch import nn
 import onnx
 
-# from onnxsim import simplify as onnx_simplify
-from smol.utils.onnx_simplifier import simplify as onnx_simplify
+from smol.utils.onnx import simplify as onnx_simplify
 
 
 def export_state_dict(model: nn.Module, path: Union[str, Path]) -> Path:
@@ -24,7 +23,6 @@ def export_onnx(
     simplify: bool = True,
 ) -> Path:
     model = model.eval().cpu()
-    path = Path(path)
     dummy_input = torch.rand(input_shape)
     torch.onnx.export(
         model,
@@ -37,7 +35,7 @@ def export_onnx(
         keep_initializers_as_inputs=True,
     )
     if simplify:
-        simple_onnx, success = onnx_simplify(str(path))
-        assert success, "failed to simplify the exported ONNX file"
-        onnx.save(simple_onnx, str(path))
+        onnx_model = onnx.load(path)
+        onnx_model = onnx_simplify(onnx_model)
+        onnx.save(onnx_model, path)
     return path
