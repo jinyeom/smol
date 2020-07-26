@@ -3,6 +3,7 @@ import torch
 from torch import Tensor, nn
 
 from smol.modules import ConvLayer, Route, YoloLayer
+from smol.utils.box import xywh2xyxy
 
 
 class YoloV4Tiny(nn.Module):
@@ -109,10 +110,6 @@ class YoloV4Tiny(nn.Module):
         yolo1 = self.yolo1(x29)
         yolo2 = self.yolo2(x36)
         return torch.cat([yolo1, yolo2], dim=1)
-
-
-def postprocess():
-    pass
 
 
 def train():
