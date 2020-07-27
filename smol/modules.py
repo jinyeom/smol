@@ -55,25 +55,17 @@ class ConvLayer(nn.Sequential):
 
 
 class Route(nn.Module):
-    def __init__(self, groups: Optional[int] = None, group_id: Optional[int] = None):
+    def __init__(self, groups: int = 1, group_id: int = 0):
         super().__init__()
         self.groups = groups
         self.group_id = group_id
 
     def forward(self, *tensors: Tensor) -> Tensor:
-        if self.groups is None and self.group_id is None:
-            if len(tensors) == 1:
-                return tensors[0]
-            return torch.cat(tensors, dim=1)
-        else:
-            if len(tensors) > 1:
-                raise ValueError(
-                    "Route expects only one Tensor when "
-                    "`groups` and `group_id` are specified"
-                )
-            tensor = tensors[0]
+        output = []
+        for tensor in tensors:
             chunks = torch.chunk(tensor, self.groups, dim=1)
-            return chunks[self.group_id]
+            output.append(chunks[self.group_id])
+        return torch.cat(output, dim=1)
 
 
 class YoloLayer(nn.Module):
