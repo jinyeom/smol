@@ -1,12 +1,16 @@
-from typing import Optional, Union, Tuple
+from typing import Optional, Union, Tuple, List
 import torch
 from torch import Tensor, nn
+from torch.nn import functional as F
+from torchvision.ops import nms
 
 from smol.modules import ConvLayer, Route, YoloLayer
-from smol.utils.box import xywh2xyxy
+from smol.utils.boxes import xywh2xyxy
 
 
-class YoloV4Tiny(nn.Module):
+class YoloV4Tiny416(nn.Module):
+    _INPUT_SIZE = 416
+
     def __init__(self, num_classes: int = 80):
         super().__init__()
         self.num_classes = num_classes
@@ -49,9 +53,7 @@ class YoloV4Tiny(nn.Module):
         self.conv27 = ConvLayer(512, 256, 1, 1, activ="leaky")
         self.conv28 = ConvLayer(256, 512, 3, 1, activ="leaky")
         self.conv29 = ConvLayer(512, self.out_channels, 1, 1, batch_norm=False)
-        self.yolo1 = YoloLayer(
-            32, [(81, 82), (135, 169), (344, 319)], num_classes, 1.05
-        )
+        self.yolo1 = YoloLayer(32, [(81, 82), (135, 169), (344, 319)], num_classes)
 
         self.route31 = Route()
         self.conv32 = ConvLayer(256, 128, 1, 1, activ="leaky")
@@ -59,7 +61,7 @@ class YoloV4Tiny(nn.Module):
         self.route34 = Route()
         self.conv35 = ConvLayer(384, 256, 3, 1, activ="leaky")
         self.conv36 = ConvLayer(256, self.out_channels, 1, 1, batch_norm=False)
-        self.yolo2 = YoloLayer(16, [(23, 27), (37, 58), (81, 82)], num_classes, 1.05)
+        self.yolo2 = YoloLayer(16, [(23, 27), (37, 58), (81, 82)], num_classes)
 
     def forward(self, x: Tensor) -> Tensor:
         x0 = self.conv0(x)
@@ -111,6 +113,47 @@ class YoloV4Tiny(nn.Module):
         yolo2 = self.yolo2(x36)
         return torch.cat([yolo1, yolo2], dim=1)
 
+    def _preprocess(self, images: List[Tensor]) -> Tensor:
+        shapes = [(im.size(2), im.size(1)) for im in images]
+        input_shape = (self._INPUT_SIZE, self._INPUT_SIZE)
+        images = [im.unsqueeze(0).to(torch.float) / 255 for im in images]
+        images = [F.interpolate(im, input_shape) for im in images]
+        images = torch.cat(images, dim=0)
+        return images, shapes
 
-def train():
-    pass
+    def _postprocess(
+        self,
+        preds: Tensor,
+        target_shapes: List[Tuple[int, int]],
+        conf_thresh: float,
+        nms_thresh: float,
+    ) -> List[Tensor]:
+        outputs = []
+        B, HxW, D = preds.shape
+        for i in range(B):
+            filtered = preds[i, preds[i, :, 4] >= conf_thresh]
+
+            boxes = xywh2xyxy(filtered[:, :4])
+            box_scores = filtered[:, 4:5]
+            cls_scores = filtered[:, 5:]
+            cls_scores, cls_ids = torch.max(cls_scores, dim=1, keepdim=True)
+            scores = box_scores * cls_scores
+            cls_ids = cls_ids.to(torch.float)
+
+            dets = torch.cat([boxes, scores, cls_ids], dim=1)
+            dets = dets[nms(boxes, scores, nms_thresh)]
+            dets[:, 0] *= target_shapes[i][0]
+            dets[:, 1] *= target_shapes[i][1]
+            dets[:, 2] *= target_shapes[i][0]
+            dets[:, 3] *= target_shapes[i][1]
+
+            outputs.append(dets)
+        return outputs
+
+    def detect(
+        self, images: List[Tensor], conf_thresh: float = 0.25, nms_thresh: float = 0.4,
+    ) -> List[Tensor]:
+        images, shapes = self._preprocess(images)
+        preds = self.forward(images)
+        dets = self._postprocess(preds, shapes, conf_thresh, nms_thresh)
+        return dets

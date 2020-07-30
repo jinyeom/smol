@@ -29,25 +29,3 @@ def box_iou(b1: Tensor, b2: Tensor) -> Tensor:
     union = b1_area + b2_area - intersect
 
     return intersect / union
-
-
-def weighted_nms(dets: Tensor, nms_thresh: float) -> Tensor:
-    sort_by_score = torch.argsort(dets[:, 4], descending=True)
-    dets = dets[sort_by_score]
-
-    keep = []
-    while dets.size(0):
-        overlap = box_iou(dets[:1, :4], dets[:, :4]) > nms_thresh
-        match = dets[:1, -1] == dets[:, -1]
-        invalid = overlap & match
-
-        weights = dets[invalid, 4:5]
-        weighted_box = torch.sum(weights * dets[invalid, :4], dim=0)
-        weighted_box = weighted_box / torch.sum(weights)
-        dets[0, :4] = weighted_box
-
-        keep.append(dets[0])
-        dets = dets[~invalid]
-
-    keep = torch.stack(keep) if keep else None
-    return keep

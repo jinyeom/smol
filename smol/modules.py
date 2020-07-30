@@ -70,38 +70,40 @@ class Route(nn.Module):
 
 class YoloLayer(nn.Module):
     def __init__(
-        self,
-        stride: int,
-        anchors: List[Tuple[int, int]],
-        num_classes: int,
-        scale_xy: float,
+        self, stride: int, anchors: List[Tuple[int, int]], num_classes: int,
     ):
         super().__init__()
         self.stride = stride
         self.anchors = anchors
         self.num_classes = num_classes
-        self.scale_xy = scale_xy
 
     def forward(self, pred: Tensor) -> Tuple[Tensor, Tensor]:
         device = pred.device
         B, C, H, W = pred.shape
         N = self.num_classes
 
-        grid_x = torch.arange(W).repeat(H, 1).to(torch.float)
-        grid_y = torch.arange(H).repeat(W, 1).t().to(torch.float)
-        grid = torch.stack([grid_x, grid_y], dim=2).to(device)
+        grid_x = torch.arange(W, device=device).repeat(H, 1).to(torch.float)
+        grid_y = torch.arange(H, device=device).repeat(W, 1).t().to(torch.float)
+        grid = torch.stack([grid_x, grid_y], dim=2)
+        grid = grid.data
 
-        anchors = torch.FloatTensor(self.anchors) / self.stride
-        anchors = anchors.view(B, -1, 1, 1, 2)
+        anchors = torch.FloatTensor(self.anchors).to(device)
+        anchors = anchors.view(B, -1, 1, 1, 2) / self.stride
+        anchors = anchors.data
 
         pred = pred.view(B, -1, N + 5, H, W)
         pred = pred.permute(0, 1, 3, 4, 2)
         xy, wh, box_conf, cls_conf = torch.split(pred, [2, 2, 1, N], dim=-1)
 
-        xy = (torch.sigmoid(xy) - 0.5) * self.scale_xy + 0.5 + grid.data
-        wh = torch.exp(wh) * anchors.data
+        # normalized boxes
+        xy = torch.sigmoid(xy) + grid
+        wh = torch.exp(wh) * anchors
         boxes = torch.cat([xy, wh], dim=-1)
-        boxes = self.stride * boxes.view(B, -1, 4)
+        boxes = boxes.view(B, -1, 4)
+        boxes[..., 0] /= W
+        boxes[..., 1] /= H
+        boxes[..., 2] /= W
+        boxes[..., 3] /= H
 
         box_conf = torch.sigmoid(box_conf).view(B, -1, 1)
         cls_conf = torch.sigmoid(cls_conf).view(B, -1, N)
