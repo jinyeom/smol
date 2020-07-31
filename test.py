@@ -6,7 +6,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import patches
 
-from smol import YoloV4Tiny416
+from smol import YoloV4Tiny
 from smol.utils.darknet import load_darknet_weights
 from smol.utils.export import export_onnx
 
@@ -94,7 +94,7 @@ coco_labels = [
     "toothbrush",
 ]
 
-model = YoloV4Tiny416().eval()
+model = YoloV4Tiny().eval()
 success = load_darknet_weights(model, "darknet/weights/yolov4-tiny.weights")
 assert success
 
