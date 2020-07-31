@@ -8,7 +8,7 @@ from smol.modules import ConvLayer, Route, YoloLayer
 from smol.utils.boxes import xywh2xyxy
 
 
-class YoloV4Tiny416(nn.Module):
+class YoloV4Tiny(nn.Module):
     _INPUT_SIZE = 416
 
     def __init__(self, num_classes: int = 80):
@@ -142,10 +142,10 @@ class YoloV4Tiny416(nn.Module):
 
             dets = torch.cat([boxes, scores, cls_ids], dim=1)
             dets = dets[nms(boxes, scores, nms_thresh)]
-            dets[:, 0] *= target_shapes[i][0]
-            dets[:, 1] *= target_shapes[i][1]
-            dets[:, 2] *= target_shapes[i][0]
-            dets[:, 3] *= target_shapes[i][1]
+            dets[:, 0] *= target_shapes[i][0] / self._INPUT_SIZE
+            dets[:, 1] *= target_shapes[i][1] / self._INPUT_SIZE
+            dets[:, 2] *= target_shapes[i][0] / self._INPUT_SIZE
+            dets[:, 3] *= target_shapes[i][1] / self._INPUT_SIZE
 
             outputs.append(dets)
         return outputs

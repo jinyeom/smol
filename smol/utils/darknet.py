@@ -9,7 +9,7 @@ from smol.modules import ConvLayer
 
 def darknet_numel(model: nn.Module) -> int:
     """Number of elements in the model as expected by Darknet."""
-    num_params = sum(p.numel() for p in model.parameters())
+    num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     for m in model.modules():
         if isinstance(m, nn.BatchNorm2d):
             num_params += len(m.running_mean)

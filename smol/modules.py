@@ -74,8 +74,10 @@ class YoloLayer(nn.Module):
     ):
         super().__init__()
         self.stride = stride
-        self.anchors = anchors
         self.num_classes = num_classes
+        self.anchors = nn.Parameter(
+            torch.FloatTensor(anchors).view(-1, 1, 1, 2), requires_grad=False
+        )
 
     def forward(self, pred: Tensor) -> Tuple[Tensor, Tensor]:
         device = pred.device
@@ -87,23 +89,14 @@ class YoloLayer(nn.Module):
         grid = torch.stack([grid_x, grid_y], dim=2)
         grid = grid.data
 
-        anchors = torch.FloatTensor(self.anchors).to(device)
-        anchors = anchors.view(B, -1, 1, 1, 2) / self.stride
-        anchors = anchors.data
-
         pred = pred.view(B, -1, N + 5, H, W)
         pred = pred.permute(0, 1, 3, 4, 2)
         xy, wh, box_conf, cls_conf = torch.split(pred, [2, 2, 1, N], dim=-1)
 
-        # normalized boxes
-        xy = torch.sigmoid(xy) + grid
-        wh = torch.exp(wh) * anchors
+        xy = self.stride * (torch.sigmoid(xy) + grid)
+        wh = torch.exp(wh) * self.anchors
         boxes = torch.cat([xy, wh], dim=-1)
         boxes = boxes.view(B, -1, 4)
-        boxes[..., 0] /= W
-        boxes[..., 1] /= H
-        boxes[..., 2] /= W
-        boxes[..., 3] /= H
 
         box_conf = torch.sigmoid(box_conf).view(B, -1, 1)
         cls_conf = torch.sigmoid(cls_conf).view(B, -1, N)

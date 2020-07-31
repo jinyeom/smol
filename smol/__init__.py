@@ -1,1 +1,1 @@
-from .yolov4_tiny import YoloV4Tiny416
+from .yolov4_tiny import YoloV4Tiny
