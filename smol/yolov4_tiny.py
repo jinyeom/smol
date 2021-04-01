@@ -132,6 +132,8 @@ class YoloV4Tiny(nn.Module):
         B, HxW, D = preds.shape
         for i in range(B):
             filtered = preds[i, preds[i, :, 4] >= conf_thresh]
+            if len(filtered) == 0:
+                continue
 
             boxes = xywh2xyxy(filtered[:, :4])
             box_scores = filtered[:, 4:5]
@@ -141,6 +143,7 @@ class YoloV4Tiny(nn.Module):
             cls_ids = cls_ids.to(torch.float)
 
             dets = torch.cat([boxes, scores, cls_ids], dim=1)
+            scores = scores.reshape(-1)
             dets = dets[nms(boxes, scores, nms_thresh)]
             dets[:, 0] *= target_shapes[i][0] / self._INPUT_SIZE
             dets[:, 1] *= target_shapes[i][1] / self._INPUT_SIZE

@@ -96,9 +96,9 @@ class YoloLayer(nn.Module):
         xy = self.stride * (torch.sigmoid(xy) + grid)
         wh = torch.exp(wh) * self.anchors
         boxes = torch.cat([xy, wh], dim=-1)
-        boxes = boxes.view(B, -1, 4)
+        boxes = boxes.reshape(B, -1, 4)
 
-        box_conf = torch.sigmoid(box_conf).view(B, -1, 1)
-        cls_conf = torch.sigmoid(cls_conf).view(B, -1, N)
+        box_conf = torch.sigmoid(box_conf).reshape(B, -1, 1)
+        cls_conf = torch.sigmoid(cls_conf).reshape(B, -1, N)
 
         return torch.cat([boxes, box_conf, cls_conf], dim=-1)
